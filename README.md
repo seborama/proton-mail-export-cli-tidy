@@ -54,7 +54,7 @@ Created 20 folders:
 ## Tech notes
 
 Each label has a type:
-    - 1: Tag
-    - 3: Folder
+- `1`: Tag
+- `3`: Folder
 
 Labels with a numerical id are "system" folders / tags (supplied by Proton) whereas labels with a "complex" ID (a string that bears resemblance with a base64 coded string) are user-defined.
