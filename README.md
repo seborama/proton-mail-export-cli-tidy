@@ -25,7 +25,25 @@ First run Proton's CLI tool:
 `/Applications/proton-mail-export-cli.app/Contents/MacOS/proton-mail-export-cli.sh`
 
 Once the export has been produced, run the script:
-`python3 proton_eml_organizer.py /full/path/to/proton/export/folder`
+
+### Basic Usage
+```bash
+# Organize emails in the export directory
+python3 proton_eml_organizer.py /full/path/to/proton/export/folder
+
+# Preview what would be organized (dry-run mode)
+python3 proton_eml_organizer.py /full/path/to/proton/export/folder --dry-run
+
+# Enable detailed logging for troubleshooting
+python3 proton_eml_organizer.py /full/path/to/proton/export/folder --debug
+
+# Combine dry-run with debug for detailed preview
+python3 proton_eml_organizer.py /full/path/to/proton/export/folder --dry-run --debug
+```
+
+### Command Line Options
+- `--dry-run`: Preview the organization without actually copying files
+- `--debug`: Enable detailed logging including file operations and decision details
 
 Example output (fictitious, counts don't add up):
 
@@ -58,3 +76,26 @@ Each label has a type:
 - `3`: Folder
 
 Labels with a numerical id are "system" folders / tags (supplied by Proton) whereas labels with a "complex" ID (a string that bears resemblance with a base64 coded string) are user-defined.
+
+## Development
+
+### Running Tests
+
+The project includes comprehensive unit tests for all core logic components. To run the tests:
+
+```bash
+# Run all tests
+python3 test_proton_eml_organizer.py
+
+# Run tests with verbose output
+python3 test_proton_eml_organizer.py -v
+```
+
+The test suite covers:
+- Label categorization and priority selection logic
+- Email metadata parsing
+- File path utilities and sanitization
+- Error handling scenarios
+- Edge cases and malformed data
+
+All tests should pass before making changes to the core logic.
