@@ -65,7 +65,8 @@ def load_labels_mapping(export_dir: Path, debug: bool = False) -> Optional[Dict[
         if 'Payload' in labels_data and isinstance(labels_data['Payload'], list):
             for label in labels_data['Payload']:
                 if 'ID' in label and 'Name' in label and 'Type' in label:
-                    mapping[label['ID']] = {
+                    # Convert ID to string to ensure consistent lookup (JSON may parse numeric IDs as int or str)
+                    mapping[str(label['ID'])] = {
                         'name': sanitize_folder_name(label['Name']),
                         'type': label['Type']
                     }
