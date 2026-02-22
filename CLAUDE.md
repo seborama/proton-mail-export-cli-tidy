@@ -4,61 +4,58 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Python-based utility that organizes EML files exported from Proton Mail Export Tool into structured folders based on email labels. The tool processes Proton Mail's export format and creates a single-copy organization system where each email is placed in exactly one folder based on a priority system.
+A Python script (`proton_eml_organizer.py`) that organizes EML files exported from Proton Mail into folders based on label assignments. Each email is placed in exactly one folder using a priority system.
 
-## Core Architecture
-
-The project consists of a single Python script (`proton_eml_organizer.py`) that:
-
-1. **Label Processing**: Reads `labels.json` from Proton Mail export to build ID-to-name mappings
-2. **Email Metadata Processing**: Processes `*.metadata.json` files to extract label assignments for each email
-3. **Folder Prioritization**: Implements a priority system for folder selection:
-   - Priority 1: User-created folders (complex ID, Type 3)
-   - Priority 2: System folders (numeric ID, Type 3) 
-   - Priority 3: Tags as fallback (Type 1)
-4. **File Organization**: Copies corresponding `.eml` files into organized folder structure
-
-## Key Components
-
-- `load_labels_mapping()`: Parses Proton's labels.json structure (`{"Version": 1, "Payload": [...]}`)
-- `get_email_labels()`: Extracts and prioritizes labels from email metadata
-- `organize_emails()`: Main orchestration function that processes all emails
-- `sanitize_folder_name()`: Handles filesystem-safe folder naming
-- `is_system_folder()`: Distinguishes between system (numeric ID) and user-created (complex ID) labels
-
-## Usage Commands
+## Commands
 
 ```bash
-# Basic usage - organize emails in current directory
-python3 proton_eml_organizer.py .
-
-# Organize emails in specific directory
+# Organize emails in an export directory
 python3 proton_eml_organizer.py /path/to/proton/export
 
-# Debug mode with detailed logging
-python3 proton_eml_organizer.py /path/to/export --debug
+# Preview without copying files
+python3 proton_eml_organizer.py /path/to/proton/export --dry-run
+
+# Detailed logging for troubleshooting
+python3 proton_eml_organizer.py /path/to/proton/export --debug
+
+# Run all tests
+python3 test_proton_eml_organizer.py -v
+
+# Run a single test class
+python3 -m unittest test_proton_eml_organizer.TestSelectTargetFolder -v
 ```
 
-## Data Structure Understanding
+## Architecture
 
-- **Labels.json**: Contains label definitions with ID, Name, and Type fields
-- **Type 1**: Tags 
-- **Type 3**: Folders
-- **System labels**: Numeric IDs (e.g., "1", "2", "3")
-- **User labels**: Complex string IDs (base64-like strings)
-- **Email metadata**: JSON files with LabelIDs arrays referencing label mappings
+The script is structured as a pipeline: validate → load labels → setup output dir → find metadata files → process each email → copy EML.
 
-## Output Structure
+**Public functions** (no underscore prefix) form the API:
+- `load_labels_mapping()` — reads `labels.json`, returns `{label_id: {name, type}}`
+- `get_email_labels()` — given a `*.metadata.json` file, returns a single-element list with the chosen folder name
+- `organize_emails()` — top-level orchestration
 
-The script creates an `organized_emails` directory with:
-- One subdirectory per email label/folder
-- EML files copied (not moved) to appropriate folders  
-- Duplicate filename handling with counter suffixes
-- Single-copy guarantee (each email in exactly one folder)
+**Private helpers** (underscore prefix) are decomposed from `organize_emails` and `get_email_labels`:
+- `_extract_label_ids_from_email()` — handles two metadata structures: `{"Payload": {"LabelIDs": [...]}}` and `{"LabelIDs": [...]}`
+- `_categorize_labels()` — splits label IDs into `user_folders`, `system_folders`, `user_tags`, `system_tags`, `unknown`
+- `_select_target_folder()` — applies the priority order to pick one folder name
 
-## Error Handling
+## Data Model
 
-- Validates existence of required files (labels.json, *.metadata.json, *.eml)
-- Prevents accidental overwrites by checking for existing organized_emails directory
-- Handles missing label mappings gracefully
-- Provides detailed error reporting and progress indicators
+**`labels.json`** structure:
+```json
+{"Version": 1, "Payload": [{"ID": "...", "Name": "...", "Type": 1|3}]}
+```
+- `Type 1` = Tag, `Type 3` = Folder
+- Numeric IDs (e.g. `"1"`, `"5"`) = system labels (Inbox, Sent, Trash…)
+- Complex string IDs (base64-like) = user-created labels
+
+**Folder selection priority** (highest to lowest):
+1. User-created folders (complex ID, Type 3)
+2. System folders (numeric ID, Type 3)
+3. Tags (Type 1) — unusual fallback, logged as a warning unless "All Mail"
+4. Unknown label types
+5. `"Unlabeled"` — final fallback
+
+## Output
+
+Creates `organized_emails/` inside the export directory. The script refuses to run if this directory already exists to prevent duplicate processing. Filename collisions within a folder are resolved with `_1`, `_2`, … suffixes.
